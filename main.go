@@ -164,6 +164,52 @@ func (s *SmartContract) CastVote(ctx contractapi.TransactionContextInterface, vo
 	return ctx.GetStub().PutState(electionID, electionJSON)
 }
 
+// TallyVotes - is use to get votes get so far for perticluar election
+func (s *SmartContract) TallyVotes(ctx contractapi.TransactionContextInterface, electionID string) (map[string]int, error) {
+	isElectionExists, err := s.isStateExists(ctx, electionID)
+	if err != nil {
+		return nil, fmt.Errorf("TallyVotes(): %s", err.Error())
+	}
+
+	if isElectionExists {
+		return nil, fmt.Errorf("TallyVotes(): election does not exists with electionID: %s", electionID)
+	}
+
+	election, err := getState[Election](ctx, electionID)
+	if err != nil {
+		return nil, fmt.Errorf("TallyVotes(): %s", err.Error())
+	}
+
+	return election.Votes, nil
+}
+
+func (s *SmartContract) GetFinalElectionResult(ctx contractapi.TransactionContextInterface, electionID string) (map[string]int, error) {
+	isElectionExists, err := s.isStateExists(ctx, electionID)
+	if err != nil {
+		return nil, fmt.Errorf("TallyVotes(): %s", err.Error())
+	}
+
+	if isElectionExists {
+		return nil, fmt.Errorf("TallyVotes(): election does not exists with electionID: %s", electionID)
+	}
+
+	election, err := getState[Election](ctx, electionID)
+	if err != nil {
+		return nil, fmt.Errorf("TallyVotes(): %s", err.Error())
+	}
+
+	currentTime := time.Now()
+	if currentTime.Before(election.StartTime) {
+		return nil, fmt.Errorf("TallyVotes(): election with electionID: %s not started yet", electionID)
+	}
+
+	if currentTime.Before(election.EndTime) {
+		return nil, fmt.Errorf("TallyVotes(): election with electionID: %s not ended yet", electionID)
+	}
+
+	return election.Votes, nil
+}
+
 // isStateExists - is use to check if data already exists in state
 func (s *SmartContract) isStateExists(ctx contractapi.TransactionContextInterface, key string) (bool, error) {
 	state, err := ctx.GetStub().GetState(key)
