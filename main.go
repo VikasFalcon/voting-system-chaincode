@@ -183,6 +183,7 @@ func (s *SmartContract) TallyVotes(ctx contractapi.TransactionContextInterface, 
 	return election.Votes, nil
 }
 
+// GetFinalElectionResult - is use to get final election result after completion of election
 func (s *SmartContract) GetFinalElectionResult(ctx contractapi.TransactionContextInterface, electionID string) (map[string]int, error) {
 	isElectionExists, err := s.isStateExists(ctx, electionID)
 	if err != nil {
