@@ -76,7 +76,7 @@ func (s *SmartContract) RegisterElection(ctx contractapi.TransactionContextInter
 
 	var votes = make(map[string]int)
 	if len(candidates) < 2 {
-		fmt.Errorf("RegisterElection(): at least 2 candidate require for election")
+		return fmt.Errorf("RegisterElection(): at least 2 candidate require for election")
 	}
 
 	for _, c := range candidates {
@@ -103,6 +103,67 @@ func (s *SmartContract) RegisterElection(ctx contractapi.TransactionContextInter
 	return ctx.GetStub().PutState(electionID, electionJSON)
 }
 
+// CastVote - is use to cast the vote in election for perticluar candidate
+func (s *SmartContract) CastVote(ctx contractapi.TransactionContextInterface, voterID, electionID, candidate string) error {
+	isVoterExists, err := s.isStateExists(ctx, voterID)
+	if err != nil {
+		return fmt.Errorf("CastVote(): %s", err.Error())
+	}
+
+	if !isVoterExists {
+		return fmt.Errorf("CastVote(): voter does not exists with voterID: %s", voterID)
+	}
+
+	isElectionExists, err := s.isStateExists(ctx, electionID)
+	if err != nil {
+		return fmt.Errorf("CastVote(): %s", err.Error())
+	}
+
+	if isElectionExists {
+		return fmt.Errorf("CastVote(): election does not exists with electionID: %s", electionID)
+	}
+
+	election, err := getState[Election](ctx, electionID)
+	if err != nil {
+		return fmt.Errorf("CastVote(): %s", err.Error())
+	}
+
+	isValidCandidate := false
+	for _, c := range election.Candidates {
+		if c == candidate {
+			isValidCandidate = true
+			break
+		}
+	}
+
+	if !isValidCandidate {
+		return fmt.Errorf("CastVote(): not valid candidate:%s for election with electionID: %s", candidate, electionID)
+	}
+
+	if election.HasVoted[voterID] {
+		return fmt.Errorf("CastVote(): voter %s has already voted for election with electionID: %s", voterID, electionID)
+	}
+
+	currentTime := time.Now()
+	if currentTime.Before(election.StartTime) {
+		return fmt.Errorf("CastVote(): election with electionID: %s not started yet", electionID)
+	}
+
+	if currentTime.After(election.EndTime) {
+		return fmt.Errorf("CastVote(): election with electionID: %s already completed", electionID)
+	}
+
+	election.Votes[candidate]++
+	election.HasVoted[voterID] = true
+
+	electionJSON, err := json.Marshal(election)
+	if err != nil {
+		return fmt.Errorf("CastVote(): error while marshalling election data for electionID:%s. error:%s", electionID, err.Error())
+	}
+
+	return ctx.GetStub().PutState(electionID, electionJSON)
+}
+
 // isStateExists - is use to check if data already exists in state
 func (s *SmartContract) isStateExists(ctx contractapi.TransactionContextInterface, key string) (bool, error) {
 	state, err := ctx.GetStub().GetState(key)
@@ -111,6 +172,25 @@ func (s *SmartContract) isStateExists(ctx contractapi.TransactionContextInterfac
 	}
 
 	return state != nil, nil
+}
+
+func getState[T any](ctx contractapi.TransactionContextInterface, key string) (*T, error) {
+	state, err := ctx.GetStub().GetState(key)
+	if err != nil {
+		return nil, fmt.Errorf("getState(): error while getting data from state for key:%s. error:%s", key, err.Error())
+	}
+
+	if state == nil {
+		return nil, fmt.Errorf("getState(): state return empty data for key:%s", key)
+	}
+
+	var result T
+	err = json.Unmarshal(state, &result)
+	if err != nil {
+		return nil, fmt.Errorf("getState(): error while unmarshalling state for key:%s. error:%s", key, err.Error())
+	}
+
+	return &result, nil
 }
 
 func main() {
