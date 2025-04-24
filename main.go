@@ -119,7 +119,7 @@ func (s *SmartContract) CastVote(ctx contractapi.TransactionContextInterface, vo
 		return fmt.Errorf("CastVote(): %s", err.Error())
 	}
 
-	if isElectionExists {
+	if !isElectionExists {
 		return fmt.Errorf("CastVote(): election does not exists with electionID: %s", electionID)
 	}
 
@@ -171,7 +171,7 @@ func (s *SmartContract) TallyVotes(ctx contractapi.TransactionContextInterface, 
 		return nil, fmt.Errorf("TallyVotes(): %s", err.Error())
 	}
 
-	if isElectionExists {
+	if !isElectionExists {
 		return nil, fmt.Errorf("TallyVotes(): election does not exists with electionID: %s", electionID)
 	}
 
@@ -190,7 +190,7 @@ func (s *SmartContract) GetFinalElectionResult(ctx contractapi.TransactionContex
 		return nil, fmt.Errorf("TallyVotes(): %s", err.Error())
 	}
 
-	if isElectionExists {
+	if !isElectionExists {
 		return nil, fmt.Errorf("TallyVotes(): election does not exists with electionID: %s", electionID)
 	}
 
